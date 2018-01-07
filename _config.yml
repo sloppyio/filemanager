@@ -4,7 +4,7 @@ description: > # this means to ignore newlines until "baseurl:"
   File Manager is a stylish and elegant web file manager you can use
   as your own cloud or integrate on your own applications.
 baseurl: "/filemanager" # the subpath of your site, e.g. /blog
-url: "https://henriquedias.com"
+url: "https://hacdias.github.io"
 twitter_username: hacdias
 github_username:  hacdias
 google_analytics: UA-59697241-1
