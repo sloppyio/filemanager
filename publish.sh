@@ -5,19 +5,15 @@ echo "Building assets"
 ./build.sh
 
 echo "Updating version number to $1..."
-sed -i "s|(untracked)|$1|g" filemanager.go
-
-echo "Commiting..."
+sed -i "s|(untracked)|$1|g" filebrowser.go
 git add -A
 git commit -m "chore: version $1"
-git push
-
-echo "Creating the tag..."
 git tag "v$1"
+git push
 git push --tags
 
 echo "Commiting untracked version notice..."
-sed -i "s|$1|(untracked)|g" filemanager.go
+sed -i "s|$1|(untracked)|g" filebrowser.go
 git add -A
 git commit -m "chore: setting untracked version [ci skip]"
 git push

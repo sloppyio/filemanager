@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
+	fb "github.com/filebrowser/filebrowser"
 	"github.com/gorilla/websocket"
-	fm "github.com/hacdias/filemanager"
 )
 
 var upgrader = websocket.Upgrader{
@@ -27,8 +27,8 @@ var (
 )
 
 // command handles the requests for VCS related commands: git, svn and mercurial
-func command(c *fm.Context, w http.ResponseWriter, r *http.Request) (int, error) {
-	// Upgrades the connection to a websocket and checks for fm.Errors.
+func command(c *fb.Context, w http.ResponseWriter, r *http.Request) (int, error) {
+	// Upgrades the connection to a websocket and checks for fb.Errors.
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return 0, err
@@ -57,13 +57,14 @@ func command(c *fm.Context, w http.ResponseWriter, r *http.Request) (int, error)
 	allowed := false
 
 	for _, cmd := range c.User.Commands {
-		if cmd == command[0] {
+		if regexp.MustCompile(cmd).MatchString(command[0]) {
 			allowed = true
+			break
 		}
 	}
 
 	if !allowed {
-		err = conn.WriteMessage(websocket.BinaryMessage, cmdNotAllowed)
+		err = conn.WriteMessage(websocket.TextMessage, cmdNotAllowed)
 		if err != nil {
 			return http.StatusInternalServerError, err
 		}
@@ -71,9 +72,9 @@ func command(c *fm.Context, w http.ResponseWriter, r *http.Request) (int, error)
 		return 0, nil
 	}
 
-	// Check if the program is talled is installed on the computer.
+	// Check if the program is installed on the computer.
 	if _, err = exec.LookPath(command[0]); err != nil {
-		err = conn.WriteMessage(websocket.BinaryMessage, cmdNotImplemented)
+		err = conn.WriteMessage(websocket.TextMessage, cmdNotImplemented)
 		if err != nil {
 			return http.StatusInternalServerError, err
 		}
@@ -92,7 +93,7 @@ func command(c *fm.Context, w http.ResponseWriter, r *http.Request) (int, error)
 	cmd.Stderr = buff
 	cmd.Stdout = buff
 
-	// Starts the command and checks for fm.Errors.
+	// Starts the command and checks for fb.Errors.
 	err = cmd.Start()
 	if err != nil {
 		return http.StatusInternalServerError, err
@@ -146,9 +147,9 @@ var (
 type condition func(path string) bool
 
 type searchOptions struct {
-	CaseInsensitive bool
-	Conditions      []condition
-	Terms           []string
+	CaseSensitive bool
+	Conditions    []condition
+	Terms         []string
 }
 
 func extensionCondition(extension string) condition {
@@ -180,9 +181,9 @@ func videoCondition(path string) bool {
 
 func parseSearch(value string) *searchOptions {
 	opts := &searchOptions{
-		CaseInsensitive: strings.Contains(value, "case:insensitive"),
-		Conditions:      []condition{},
-		Terms:           []string{},
+		CaseSensitive: strings.Contains(value, "case:sensitive"),
+		Conditions:    []condition{},
+		Terms:         []string{},
 	}
 
 	// removes the options from the value
@@ -214,7 +215,7 @@ func parseSearch(value string) *searchOptions {
 	}
 
 	// If it's canse insensitive, put everything in lowercase.
-	if opts.CaseInsensitive {
+	if !opts.CaseSensitive {
 		value = strings.ToLower(value)
 	}
 
@@ -240,8 +241,8 @@ func parseSearch(value string) *searchOptions {
 }
 
 // search searches for a file or directory.
-func search(c *fm.Context, w http.ResponseWriter, r *http.Request) (int, error) {
-	// Upgrades the connection to a websocket and checks for fm.Errors.
+func search(c *fb.Context, w http.ResponseWriter, r *http.Request) (int, error) {
+	// Upgrades the connection to a websocket and checks for fb.Errors.
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return 0, err
@@ -275,7 +276,7 @@ func search(c *fm.Context, w http.ResponseWriter, r *http.Request) (int, error) 
 	scope = filepath.Clean(scope)
 
 	err = filepath.Walk(scope, func(path string, f os.FileInfo, err error) error {
-		if search.CaseInsensitive {
+		if !search.CaseSensitive {
 			path = strings.ToLower(path)
 		}
 
